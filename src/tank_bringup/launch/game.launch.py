@@ -139,10 +139,14 @@ def generate_launch_description():
                 os.path.join(gazebo_ros_share, 'launch', 'gazebo.launch.py')),
             launch_arguments={'world': full_world,
                               'gui': LaunchConfiguration('gui')}.items())]),
-        # 游戏节点:总控(开始/暂停)、键盘、玩家执行器(开炮)、战斗系统(命中判定)
+        # 游戏节点:总控(开始/暂停)、玩家执行器(开炮)、战斗系统(命中判定)
+        # ⚠️ 键盘节点不在这里!ros2 launch 给子进程的标准输入是 launch 内部
+        # 的管道(实测 fd0 -> pipe,不是用户终端),keyboard_node 读 stdin 的
+        # 按键永远收不到(用户真机验收暴露;headless 验证用话题直发故从未
+        # 发现)。键盘必须由用户在第二个终端单独跑:
+        #   ros2 run tank_nodes keyboard_node
+        # ——ros2 run 继承终端 stdin,按键才能直达(ROS teleop 标准玩法)。
         Node(package='tank_nodes', executable='game_master_node', output='screen'),
-        Node(package='tank_nodes', executable='keyboard_node',
-             parameters=[{'prefix': 'player'}], output='screen'),
         Node(package='tank_nodes', executable='player_tank_node',
              parameters=[{'prefix': 'player'}], output='screen'),
         Node(package='tank_nodes', executable='combat_system_node',

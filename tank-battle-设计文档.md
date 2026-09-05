@@ -189,14 +189,17 @@
 | 2026-09-05 | Batch 8 | ✅ hud_node 1Hz 一行式 HUD(ANSI 彩色不清屏,tail -f 友好),实测:血量实时掉(100→75→50→0)血条同步缩短、敌数/状态/强化记录/被击毁标记全对;真机验证清单(第 7 节)重写为面向用户的操作步骤 | 坑:①printf 多参数格式串错位(血量显示空)——改 std::string 拼接一劳永逸;②HUD 敌数不能取 game_state 的 enemy_alive(总控开局未统计,显示 0 误导),改从 /tank_status 自数;③IDLE 期 combat 完全冻结不发 status,HUD 敌数显示 0 属正常(游戏开始后自动正确) |
 | 2026-09-05 | Batch 8 补充:GUI 修复(真机验收时暴露) | ✅ 用户实测:修复后 Gazebo 窗口正常显示、1400×900 正常大小流畅运行 | **盲区承认:8 个批次全部 headless(gui:=false)验证,GUI 路径从未验证过——用户真机一开窗口就"无响应",教训:渲染相关功能必须开 GUI 验证一次。** 排查链(用户参与二分):空 Gazebo 正常 → 无坦克场景正常 → 元凶锁定坦克 → STL 顶点数无罪(每辆几千三角形)→ 碰撞体无罪(URDF 转 SDF 后全是 box/cylinder 基本体)→ **真凶:坦克视觉 mesh 的 uri 是 model://tank_description/... (gz sdf 从 package:// 转来),gzclient 解析 model:// 需要 GAZEBO_MODEL_PATH 精确配置,没配时 GUI 死循环找文件拖到无响应;headless 模式不加载视觉 mesh,所以从不暴露。** 修复:launch 生成 world 时把 mesh uri 替换为 file:// 绝对路径(指向 install 真实文件)。附:强杀 gzserver 后 60s 内重启必 exit 255(Gazebo 端口 TIME_WAIT,等 60 秒或换 GAZEBO_MASTER_URI 端口);~/.gazebo/gui.ini 的 [geometry] 段控制窗口大小 |
 | 2026-09-05 | 需求变更:取消 Enter 开始 | ✅ game_master 加 auto_start_delay 参数(默认 5.0s,节点启动 5 秒后自动转 RUNNING,传负值可退回手动);HUD 文案同步"准备中(自动开始)";43 tests 全绿(状态机无改动);无头实测"游戏自动开始(5 秒到点)!"日志确认 | 背景:用户真机验收时 Enter 键受键盘焦点/终端交互困扰,拍板改自动开始 |
+| 2026-09-05 | 键盘修复:launch stdin 管道坑(真机验收暴露) | ✅ 用户两局"坦克从未动过"→ 实验实锤:ros2 launch 给子进程的标准输入是 launch 内部管道(/proc/&lt;pid&gt;/fd/0 → pipe,非用户终端),keyboard_node 读 stdin 永远收不到按键——与焦点无关,从第一局起就没通过。修复:keyboard_node 从 launch 移除,改为用户在第二终端 ros2 run (继承终端 stdin,ROS teleop 标准玩法);第 7 节操作流程改双终端版。冒烟:launch 内已无键盘节点、单独 run 的键盘节点 10.0Hz 心跳发布 /player/cmd_vel、站桩玩家 30 秒被 3 敌围攻致死(state 4)——反向复现用户两局剧本(敌人链路全程正常,断点只在键盘) | **盲区承认 #2:8 批验证全部用话题直发 cmd_vel(autoplayer),真实按键 stdin 路径从未端到端验证——与 GUI mesh 坑同款性质。教训:交互入口(键盘/GUI)必须真机走一遍。** 顺带把清单"失败,按重启"同步为实际 HUD 文案 |
 
 ## 7. 真机验证清单
 
-> 以下由你(用户)逐项操作勾选。键盘焦点必须在启动 launch 的那个终端(它抓按键)。
+> 以下由你(用户)逐项操作勾选。**开两个终端**:终端 1 跑游戏(launch + Gazebo + HUD),终端 2 跑键盘(**所有按键在这里按**)。
 
 ### 准备
 - [ ] 编译:`cd ~/tank-battle && source /opt/ros/humble/setup.bash && colcon build --symlink-install && source install/setup.bash`
-- [ ] 启动(带画面):`ros2 launch tank_bringup game.launch.py` —— 等约 40 秒(错峰加载),Gazebo 窗口出现绿坦克(你)+3 辆红坦克,终端持续打 HUD 行
+- [ ] 终端 1 启动(带画面):`ros2 launch tank_bringup game.launch.py` —— 等约 40 秒(错峰加载),Gazebo 窗口出现绿坦克(你)+3 辆红坦克,终端持续打 HUD 行
+- [ ] **终端 2(新开一个终端窗口,你的"手柄")**:`source ~/tank-battle/install/setup.bash && ros2 run tank_nodes keyboard_node`,看到"键盘就绪"即可,**之后 W/A/S/D/Q/E/空格/P 全在终端 2 按**
+  (⚠️ 键盘不能放进 launch:ros2 launch 给子进程的标准输入是它内部的管道——实测 fd0→pipe,不是你的终端——按键永远收不到。真机验收暴露的头号坑,已从 launch 移除,单独跑 ros2 run 才能拿到终端按键)
 
 ### 基础操作
 - [ ] 开局前锁死:自动开始前的 5 秒内按 W/A/D,坦克纹丝不动(还没 RUNNING)——预期
@@ -219,10 +222,10 @@
 - [ ] (重点)掉血后吃维修:血量低于 100 时吃维修,HUD 回 100/100
 
 ### 结局与异常路径
-- [ ] 被围攻打死:HUD"失败,按重启",Gazebo 里你的坦克消失、全场静止
+- [ ] 被围攻打死:HUD"失败!坦克已阵亡,重开一局",Gazebo 里你的坦克消失、全场静止
 - [ ] 击毁全部 3 辆:HUD"胜利!敌人全灭",敌人逐辆消失
-- [ ] 收尾:启动 launch 的终端按 **Ctrl+C**,退出后跑 `~/tank-battle/scripts/tank_clean.sh`
-  (孤儿进程会污染 DDS 图,下次启动服务调用会卡死——每场必清)
+- [ ] 收尾:终端 2 按 **Ctrl+C** 退键盘 → 终端 1 按 **Ctrl+C** 退游戏,退出后跑 `~/tank-battle/scripts/tank_clean.sh`
+  (孤儿进程会污染 DDS 图,下次启动服务调用会卡死——每场必清;强杀过 Gazebo 后 60 秒内别重启,端口冷却中)
 
 ## 8. 遗留风险与未验证点
 
