@@ -142,12 +142,16 @@
 - D3:追击中距离 14m → 开炮且冷却 2s 内第二拍不开(正常近+冷却)
 - D4:PAUSED 状态输入任何距离 → 输出"不动不打"(暂停冻结)
 
-**E. KeymapParser(键位映射,纯逻辑)**
-- E1:按 w → 前进速度=1.0;松开 w → 0.0(按住/松开)
-- E2:同时 w+a → 前进 1.0 且角速度=1.0(组合键)
-- E3:按 p 在 IDLE → 无 start 调用(无效暂停)
-- E4:回车在 RUNNING → 不重复 start(幂等)
-- E5:未知键(如 z)→ 无任何输出(垃圾输入不崩)
+**E. KeymapParser(键位映射,纯逻辑,teleop 语义——2026-09-05 修订版)**
+> 修订说明:Linux 终端按键无"松开"事件(硬限制),键位从"按住持续/松开停"改为 ROS 生态通行的 teleop 语义(按一下持续、X 急停、Q/E 炮塔步进 0.2rad)。原 E1-E5 按新语义改写并扩为 8 条。
+- E1:按 w → 前进速度=1.0;按 x → 0.0(teleop:按一下持续)
+- E2:s 后退 -1.0;a 左转 +1.0、d 右转 -1.0;前后与转向独立复合生效
+- E3:IDLE 下 w/空格 → 移动 0、无 fire 事件(锁死);Enter 请求放行(否则无法开始游戏)
+- E4:开始/暂停请求是"标志"非"队列":连按 Enter 取走一次后为空,再按再产生(避免 game_master 收冗余请求;幂等本身由 batch 5 状态机保证)
+- E5:未知键(z、转义残渣)→ 状态不变不崩
+- E6:Q/E 炮塔步进 0.2rad,Q 左(+)E 右(-),可累积
+- E7:PAUSED 下移动/转向键忽略、输出强制 0、P 放行;恢复 RUNNING 后延续暂停前的运动(需求卡:"从冻结处继续,不是重开")
+- E8:空格只在 RUNNING 产生 fire 事件,pop 一次性
 
 **F. 运行验证(单测做不了的,进第 7 节清单)**:Gazebo 画面、操控手感、炮弹观感、AI 实际表现、暂停时子弹真的悬停、性能帧率。
 
@@ -159,7 +163,7 @@
 |---|---|---|---|---|
 | 1 | 骨架立起:4 个包空壳+自定义消息+编译通过;git 基线 | tank_msgs 全部、其余包骨架 | colcon build 绿;`ros2 interface show tank_msgs/GameState` 正常 | ✅ |
 | 2 | 坦克开进 Gazebo:zthanxx 模型入库(MIT 注明)+自加炮塔、battlefield.world、launch 一条命令启动,场景里看到坦克 | tank_description、tank_bringup | 启动 Gazebo 看到坦克炮塔;命令行手动发 cmd_vel 坦克会动、发炮塔命令炮塔会转 | ✅ |
-| 3 | 键盘操控:WASD 开车、QE 转炮塔 | keyboard_node、player_tank_node | 按键开车/转炮塔,松开即停;单测 E1-E5 绿 | 待执行 |
+| 3 | 键盘操控:WASD 开车、QE 转炮塔 | keyboard_node、player_tank_node | 按键开车/转炮塔,松开即停;单测 E1-E5 绿 | ✅(语义变更见执行记录) |
 | 4 | 开炮打伤害:空格发炮弹、飞行、命中扣血、击毁消失、3s 自毁 | player_tank_node(开炮)、combat_system_node、bullet.sdf | 场景里炮弹飞、打敌人(手动放一个靶)掉血,打完消失;单测 B1-B5 绿 | 待执行 |
 | 5 | 开始/暂停:Enter 前一切锁死,P 全冻结(子弹悬停) | game_master_node、各节点接 GameState | IDLE 按键无效;Enter 后能动;P 后物理+逻辑全停,再 P 恢复;单测 A1-A7、D4 绿 | 待执行 |
 | 6 | 敌人上阵:3 个敌人巡逻/追击/开炮,全灭→WIN、玩家死→LOSE | enemy_ai_node、game_master 胜负判定 | 实际被 3 个敌人围攻;全灭显示 WIN;被耗死显示 LOSE;单测 D1-D3 绿 | 待执行 |
@@ -177,6 +181,7 @@
 | 2026-09-05 | 设计 | 用户批准设计文档,授权 batch 间自主推进,用户做最终验收 | — |
 | 2026-09-05 | Batch 1 | ✅ 4 包编译绿、冒烟测试 3/3 绿、消息注册验证通过 | 坑:colcon 递归扫到 third_party 的 ROS1 老包导致首次编译失败,已放 third_party/COLCON_IGNORE 挡掉(以后新会话须知:该标记不能删) |
 | 2026-09-05 | Batch 2 | ✅ 坦克 spawn 成功、cmd_vel 驾驶位移 2.95m(指令 1.5m/s×2s)、炮塔转 1.57rad 实测 1.5699、两个控制器 activated | **7 个坑全记录(重要经验)**:①ROS2 Humble 无 zthanxx 用的多轮差速插件(ROS1 fork 特供),改用 libgazebo_ros_planar_move.so(吃 cmd_vel 的 x+yaw,游戏操控更稳);②gazebo_ros2_control 插件缺 <ros><namespace> 时在全局找 rsp 服务,死循环卡死 gzserver(CPU 0%/时钟停);③<robot_param_node> 必须写全限定名 /<prefix>/robot_state_publisher(相对名拼接不可靠);④<parameters> 必须是插件标签直接子级,放进 <ros> 内插件读不到;⑤cm 的 update_rate 必须由 yaml 提供,且 rcl 参数文件按节点全限定名匹配——带 ns 的 cm 匹配不上纯键 controller_manager:,须用 /** 通配(多坦克共用一份);⑥Humble 位置控制器类名是 position_controllers/JointGroupPositionController,命令话题 Float64MultiArray;控制器配置要写两份形态:嵌套段(turret_position_controller.type,cm 找插件用)+ 裸参数(joints,控制器节点自身读),/** 全灌即可;⑦环境管理:多轮验证留下孤儿 gzserver(占端口 11345 导致新 gzserver exit 255)与 rsp 僵尸(DDS 里多个 cm 抢答服务),症状忽好忽坏。标准清理:ps 收集 ros2 launch/gzserver/robot_state_publisher/spawner 全杀;验证收尾用 kill -INT 给 launch 让它自己带走子进程 |
+| 2026-09-05 | Batch 3 | ✅ E 组 8 用例全绿;键盘/执行器节点接入仿真跑通:模拟键盘产物链路验证炮塔 1.57rad、底盘位移直线正常 | 坑:①CMake 里用了 geometry_msgs 忘了 find_package(ament_target_dependencies 不替你 find);②**两处测试用例语义写歪,按红线流程修正并记录**:E4 原期望"Enter 排队产生多个请求"——实现为标志语义(取走前合并),后者才符合"开始游戏幂等"的需求原意;E7 原期望"恢复后从静止起步"——需求卡明确"从冻结处继续",恢复后应延续暂停前运动,断言改为 1.0。定位手段:gdb 硬件 watchpoint 抓 start_requested_ 变化序列(构造→on_key 置 true→pop 清),证明实现正确、用例期望错。E 组测试计划已同步修订(teleop 语义)。键位语义因终端无 key-release 事件改为 teleop 风格(按一下持续/X 急停/Q/E 步进),需求卡 E 组已同步 |
 
 ## 7. 真机验证清单(= 实际运行清单,用户执行逐项勾)
 

@@ -7,18 +7,32 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(tank_msgs REQUIRED)
 
-# 后续 batch 在此追加节点可执行文件,统一模式:
-# add_executable(<节点名> src/<节点名>.cpp)
-# ament_target_dependencies(<节点名> rclcpp tank_msgs ...)
-# install(TARGETS <节点名> DESTINATION lib/${PROJECT_NAME})
+# 节点可执行文件
+add_executable(keyboard_node src/keyboard_node.cpp)
+ament_target_dependencies(keyboard_node rclcpp tank_msgs geometry_msgs std_msgs)
+target_include_directories(keyboard_node PRIVATE include)
+
+add_executable(player_tank_node src/player_tank_node.cpp)
+ament_target_dependencies(player_tank_node rclcpp tank_msgs std_msgs)
+target_include_directories(player_tank_node PRIVATE include)
+
+install(TARGETS keyboard_node player_tank_node
+  DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
   # 冒烟:验证消息代码生成正确、gtest 基建可用
   ament_add_gtest(test_smoke test/test_smoke.cpp)
   ament_target_dependencies(test_smoke tank_msgs)
+  # 键盘解析纯逻辑(E 组用例);-O0 -g 保证可单步调试
+  ament_add_gtest(test_keymap test/test_keymap.cpp)
+  target_compile_options(test_keymap PRIVATE -O0 -g)
+  target_include_directories(test_keymap PRIVATE include)
+  ament_target_dependencies(test_keymap tank_msgs)
 endif()
 
 ament_package()

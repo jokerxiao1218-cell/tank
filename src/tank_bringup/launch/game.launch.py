@@ -42,6 +42,11 @@ def generate_launch_description():
         Node(package='robot_state_publisher', executable='robot_state_publisher',
              namespace='player',
              parameters=[{'robot_description': robot_description}]),
+        # 2.5 键盘与玩家执行器(batch 3)
+        Node(package='tank_nodes', executable='keyboard_node',
+             parameters=[{'prefix': 'player'}], output='screen'),
+        Node(package='tank_nodes', executable='player_tank_node',
+             parameters=[{'prefix': 'player'}], output='screen'),
         # 3. 把玩家坦克生成进战场
         Node(package='gazebo_ros', executable='spawn_entity.py',
              arguments=['-entity', 'player',
