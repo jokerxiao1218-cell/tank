@@ -1,0 +1,238 @@
+<?xml version="1.0"?>
+<robot name="tank" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!--
+    tank-battle 坦克模型(玩家/敌人共用)
+    底盘源自 zthanxx/tank_bot(MIT,见 third_party/README.md),放大 3 倍(原 30cm 玩具 → ~0.9m 坦克)
+    炮塔/炮管为本项目自加几何体;轮子保留视觉但为固定件(由 planar_move 插件驱动整车,
+    原因见设计文档 3.5/执行记录:ROS2 Humble 无多轮差速插件)
+  -->
+  <!-- ====== 参数:prefix 决定话题命名空间(/<prefix>/cmd_vel),颜色区分敌我 ====== -->
+  <xacro:arg name="prefix" default="player"/>
+  <xacro:arg name="body_color" default="Gazebo/Green"/>
+  <xacro:arg name="turret_color" default="Gazebo/DarkGrey"/>
+  <xacro:property name="prefix" value="$(arg prefix)"/>
+  <xacro:property name="body_color" value="$(arg body_color)"/>
+  <xacro:property name="turret_color" value="$(arg turret_color)"/>
+  <!-- mesh 原始单位 mm,URDF 用 m;×3 放大故 scale=0.001×3 -->
+  <xacro:property name="s" value="0.003"/>
+
+  <!-- ====== 底盘(源自 zthanxx,惯量/坐标按 ×3 等比换算)====== -->
+  <link name="base_link">
+    <inertial>
+      <origin xyz="-0.006 -0.021 0.0928" rpy="0 0 0"/>
+      <mass value="260.9"/>
+      <inertia ixx="0.4528" iyy="0.7841" izz="1.0945" ixy="0.0" iyz="0.0" ixz="-0.000117"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://tank_description/meshes/base_link.stl" scale="${s} ${s} ${s}"/>
+      </geometry>
+      <material name="body_mat"><color rgba="0.2 0.5 0.2 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.1" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.85 0.55 0.2"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ====== 6 个轮子(视觉用原 STL;碰撞用等效圆柱,轴对 y)====== -->
+  <xacro:macro name="wheel" params="name origin_y joint_origin_x mesh_x_offset flip">
+    <link name="${name}">
+      <inertial>
+        <origin xyz="0 ${origin_y} 0" rpy="0 0 0"/>
+        <mass value="45.07"/>
+        <inertia ixx="0.0096" iyy="0.01695" izz="0.0096" ixy="0.0" iyz="0.0" ixz="0.0"/>
+      </inertial>
+      <visual>
+        <origin xyz="${mesh_x_offset} ${-origin_y} -0.105" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://tank_description/meshes/${name}.stl" scale="${s} ${s} ${s}"/>
+        </geometry>
+        <material name="wheel_mat"><color rgba="0.1 0.1 0.1 1"/></material>
+      </visual>
+      <collision>
+        <origin xyz="${mesh_x_offset} ${-origin_y} -0.105" rpy="1.5708 0 0"/>
+        <geometry>
+          <cylinder radius="0.195" length="0.12"/>
+        </geometry>
+      </collision>
+    </link>
+    <joint name="${name}_joint" type="fixed">
+      <origin xyz="${joint_origin_x} ${origin_y} 0.105" rpy="0 0 0"/>
+      <parent link="base_link"/>
+      <child link="${name}"/>
+    </joint>
+  </xacro:macro>
+  <!-- 坐标均为原模型值×3;zthanxx 的视觉偏移与关节位置 y 符号相反,保持原样 -->
+  <xacro:wheel name="rw1_link_1" origin_y="-0.3405" joint_origin_x="0.3"    mesh_x_offset="-0.3"   flip="1"/>
+  <xacro:wheel name="rw2_link_1" origin_y="-0.3405" joint_origin_x="-0.0075" mesh_x_offset="0.0075"  flip="1"/>
+  <xacro:wheel name="rw3_link_1" origin_y="-0.3405" joint_origin_x="-0.315"  mesh_x_offset="0.315"  flip="1"/>
+  <xacro:wheel name="lw1_link_1" origin_y="0.2985"  joint_origin_x="0.3015"  mesh_x_offset="-0.3015" flip="1"/>
+  <xacro:wheel name="lw2_link_1" origin_y="0.2985"  joint_origin_x="-0.006"  mesh_x_offset="-0.006"  flip="1"/>
+  <xacro:wheel name="lw3_link_1" origin_y="0.2985"  joint_origin_x="-0.3135" mesh_x_offset="0.3135"  flip="1"/>
+
+  <!-- ====== 车体上层平台(源自 zthanxx frame)====== -->
+  <link name="frame_1">
+    <inertial>
+      <origin xyz="0 0 0.381" rpy="0 0 0"/>
+      <mass value="112.7"/>
+      <inertia ixx="0.478" iyy="0.536" izz="0.425" ixy="0.0" iyz="0.0" ixz="0.0"/>
+    </inertial>
+    <visual>
+      <origin xyz="-0.006 0.021 -0.27" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://tank_description/meshes/frame_1.stl" scale="${s} ${s} ${s}"/>
+      </geometry>
+      <material name="body_mat"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.1" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.6 0.4 0.05"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="frame_joint" type="fixed">
+    <origin xyz="-0.006 -0.021 0.27" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="frame_1"/>
+  </joint>
+
+  <!-- ====== 炮塔(本项目自加;continuous 关节由 ros2_control 驱动)====== -->
+  <link name="turret">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="60.0"/>
+      <inertia ixx="1.51" iyy="1.51" izz="2.7" ixy="0.0" iyz="0.0" ixz="0.0"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.3" length="0.18"/>
+      </geometry>
+      <material name="turret_mat"><color rgba="0.35 0.35 0.35 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.3" length="0.18"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="turret_joint" type="continuous">
+    <origin xyz="0 0 0.4" rpy="0 0 0"/>
+    <parent link="frame_1"/>
+    <child link="turret"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="1000" velocity="3.0"/>
+  </joint>
+
+  <!-- ====== 炮管(沿 x 伸出,固定在炮塔)====== -->
+  <link name="barrel">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="20.0"/>
+      <inertia ixx="0.025" iyy="1.07" izz="1.07" ixy="0.0" iyz="0.0" ixz="0.0"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 1.5708 0"/>
+      <geometry>
+        <cylinder radius="0.05" length="0.8"/>
+      </geometry>
+      <material name="barrel_mat"><color rgba="0.15 0.15 0.15 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 1.5708 0"/>
+      <geometry>
+        <cylinder radius="0.05" length="0.8"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="barrel_joint" type="fixed">
+    <origin xyz="0.6 0 0.03" rpy="0 0 0"/>
+    <parent link="turret"/>
+    <child link="barrel"/>
+  </joint>
+
+  <!-- ====== 炮口(空 link:batch 4 计算炮弹出生点的参考系)====== -->
+  <link name="muzzle"/>
+  <joint name="muzzle_joint" type="fixed">
+    <origin xyz="1.0 0 0.03" rpy="0 0 0"/>
+    <parent link="turret"/>
+    <child link="muzzle"/>
+  </joint>
+
+  <!-- ====== ROS2 控制:炮塔位置控制(ros2_control 标准结构)====== -->
+  <ros2_control name="TankSystem" type="system">
+    <hardware>
+      <plugin>gazebo_ros2_control/GazeboSystem</plugin>
+    </hardware>
+    <joint name="turret_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_position">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+  </ros2_control>
+
+  <!-- ====== Gazebo 插件 ====== -->
+  <!-- 底盘:平面运动(直接吃 cmd_vel 的 x+yaw,坦克开起来,永不翻车) -->
+  <gazebo>
+    <plugin name="tank_planar_move" filename="libgazebo_ros_planar_move.so">
+      <update_rate>100</update_rate>
+      <ros>
+        <namespace>/${prefix}</namespace>
+      </ros>
+      <command_topic>cmd_vel</command_topic>
+      <odometry_topic>odom</odometry_topic>
+      <odometry_frame>odom</odometry_frame>
+      <robot_base_frame>base_link</robot_base_frame>
+    </plugin>
+  </gazebo>
+  <!-- 炮塔:gazebo_ros2_control(控制器配置在 controllers/tank_controllers.yaml)
+       坑1:<ros><namespace> 让插件节点(及 controller_manager)进入 /<prefix> 命名空间
+       坑2:robot_param_node 用全限定名,服务路径拼接才可靠(不带/开头时按相对名展开)
+       坑3:<parameters> 必须是插件标签直接子级(实测放进 <ros> 里插件读不到,
+            报 "No parameter file provided",controller_manager 初始化中止) -->
+  <gazebo>
+    <plugin name="gazebo_ros2_control" filename="libgazebo_ros2_control.so">
+      <ros>
+        <namespace>/${prefix}</namespace>
+      </ros>
+      <robot_param>robot_description</robot_param>
+      <robot_param_node>/${prefix}/robot_state_publisher</robot_param_node>
+      <parameters>$(find tank_description)/controllers/tank_controllers.yaml</parameters>
+    </plugin>
+  </gazebo>
+
+  <!-- ====== Gazebo 外观/摩擦(材质在 Gazebo 里由这些标签决定,URDF material 对 mesh 不生效)====== -->
+  <gazebo reference="base_link">
+    <material>${body_color}</material>
+    <mu1>1.0</mu1><mu2>1.0</mu2>
+  </gazebo>
+  <gazebo reference="frame_1">
+    <material>${body_color}</material>
+    <mu1>1.0</mu1><mu2>1.0</mu2>
+  </gazebo>
+  <gazebo reference="turret">
+    <material>${turret_color}</material>
+    <mu1>1.0</mu1><mu2>1.0</mu2>
+  </gazebo>
+  <gazebo reference="barrel">
+    <material>Gazebo/Black</material>
+    <mu1>1.0</mu1><mu2>1.0</mu2>
+  </gazebo>
+  <xacro:macro name="wheel_gz" params="name">
+    <gazebo reference="${name}">
+      <material>Gazebo/Black</material>
+      <mu1>1.0</mu1><mu2>1.0</mu2>
+    </gazebo>
+  </xacro:macro>
+  <xacro:wheel_gz name="rw1_link_1"/><xacro:wheel_gz name="rw2_link_1"/><xacro:wheel_gz name="rw3_link_1"/>
+  <xacro:wheel_gz name="lw1_link_1"/><xacro:wheel_gz name="lw2_link_1"/><xacro:wheel_gz name="lw3_link_1"/>
+
+</robot>

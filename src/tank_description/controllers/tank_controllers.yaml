@@ -1,0 +1,19 @@
+# 炮塔控制器配置(gazebo_ros2_control 加载)
+# 每辆坦克的 controller_manager 独立加载,靠命名空间隔离(/player/...、/enemy_N/...)
+# 文件被 gazebo_ros2_control 以 --params-file 塞进全局参数,所有节点都吃 /** 段
+#
+# 坑(实测定论,详见设计文档执行记录 batch 2):
+# 1) yaml 参数按节点全限定名匹配,cm 在 /<prefix> 下,纯键 controller_manager: 匹配不上
+#    → 用 /** 通配;玩家与 3 个敌人共用本文件
+# 2) cm 从自己参数树的嵌套段(下方 joint_state_broadcaster/turret_position_controller.type)
+#    查找控制器插件;而控制器节点自身要的是裸参数(joints)
+#    → 两样都写:嵌套段给 cm,裸 joints 给控制器节点(其余节点不声明该参数,静默忽略)
+# 3) Humble 的位置控制器类名是 JointGroupPositionController(不是旧文档的 JointPositionController)
+/**:
+  ros__parameters:
+    update_rate: 100              # cm 控制回路频率 Hz
+    joints: ["turret_joint"]      # 控制器节点读取(裸参数)
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster      # cm 树用
+    turret_position_controller:
+      type: position_controllers/JointGroupPositionController  # cm 树用

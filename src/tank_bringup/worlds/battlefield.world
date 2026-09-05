@@ -1,0 +1,117 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <!-- tank-battle 战场:30x30m 平地 + 四周围墙 + 掩体箱 -->
+  <world name="battlefield">
+    <include><uri>model://ground_plane</uri></include>
+    <include><uri>model://sun</uri></include>
+
+    <scene>
+      <shadows>false</shadows>
+    </scene>
+
+    <!-- ====== 四周围墙(防坦克/炮弹出界)====== -->
+    <model name="wall_north">
+      <static>true</static>
+      <pose>0 15 0.6 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>31 0.5 1.2</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>31 0.5 1.2</size></box></geometry>
+          <material><ambient>0.4 0.35 0.3 1</ambient><diffuse>0.5 0.45 0.4 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_south">
+      <static>true</static>
+      <pose>0 -15 0.6 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>31 0.5 1.2</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>31 0.5 1.2</size></box></geometry>
+          <material><ambient>0.4 0.35 0.3 1</ambient><diffuse>0.5 0.45 0.4 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_east">
+      <static>true</static>
+      <pose>15 0 0.6 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>0.5 31 1.2</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>0.5 31 1.2</size></box></geometry>
+          <material><ambient>0.4 0.35 0.3 1</ambient><diffuse>0.5 0.45 0.4 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_west">
+      <static>true</static>
+      <pose>-15 0 0.6 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>0.5 31 1.2</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>0.5 31 1.2</size></box></geometry>
+          <material><ambient>0.4 0.35 0.3 1</ambient><diffuse>0.5 0.45 0.4 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ====== 掩体障碍(静态,打不烂;位置避开中心出生区)====== -->
+    <model name="crate_1">
+      <static>true</static>
+      <pose>5 5 0.6 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>1.5 1.5 1.2</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>1.5 1.5 1.2</size></box></geometry>
+          <material><ambient>0.3 0.25 0.15 1</ambient><diffuse>0.45 0.35 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="crate_2">
+      <static>true</static>
+      <pose>-5 -5 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>2 2 1.5</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>2 2 1.5</size></box></geometry>
+          <material><ambient>0.3 0.25 0.15 1</ambient><diffuse>0.45 0.35 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="crate_3">
+      <static>true</static>
+      <pose>6 -6 0.6 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>1.5 1.5 1.2</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>1.5 1.5 1.2</size></box></geometry>
+          <material><ambient>0.3 0.25 0.15 1</ambient><diffuse>0.45 0.35 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="crate_4">
+      <static>true</static>
+      <pose>-6 6 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>2 2 1.5</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>2 2 1.5</size></box></geometry>
+          <material><ambient>0.3 0.25 0.15 1</ambient><diffuse>0.45 0.35 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="barrier_n">
+      <static>true</static>
+      <pose>0 8 0.6 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>3 1 1.2</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>3 1 1.2</size></box></geometry>
+          <material><ambient>0.3 0.25 0.15 1</ambient><diffuse>0.45 0.35 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="barrier_s">
+      <static>true</static>
+      <pose>0 -8 0.6 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>3 1 1.2</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>3 1 1.2</size></box></geometry>
+          <material><ambient>0.3 0.25 0.15 1</ambient><diffuse>0.45 0.35 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>

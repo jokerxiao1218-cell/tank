@@ -158,7 +158,7 @@
 | # | 目标(做完系统什么状态) | 涉及文件 | 验证方式 | 状态 |
 |---|---|---|---|---|
 | 1 | 骨架立起:4 个包空壳+自定义消息+编译通过;git 基线 | tank_msgs 全部、其余包骨架 | colcon build 绿;`ros2 interface show tank_msgs/GameState` 正常 | ✅ |
-| 2 | 坦克开进 Gazebo:zthanxx 模型入库(MIT 注明)+自加炮塔、battlefield.world、launch 一条命令启动,场景里看到坦克 | tank_description、tank_bringup | 启动 Gazebo 看到坦克炮塔;命令行手动发 cmd_vel 坦克会动、发炮塔命令炮塔会转 | 待执行 |
+| 2 | 坦克开进 Gazebo:zthanxx 模型入库(MIT 注明)+自加炮塔、battlefield.world、launch 一条命令启动,场景里看到坦克 | tank_description、tank_bringup | 启动 Gazebo 看到坦克炮塔;命令行手动发 cmd_vel 坦克会动、发炮塔命令炮塔会转 | ✅ |
 | 3 | 键盘操控:WASD 开车、QE 转炮塔 | keyboard_node、player_tank_node | 按键开车/转炮塔,松开即停;单测 E1-E5 绿 | 待执行 |
 | 4 | 开炮打伤害:空格发炮弹、飞行、命中扣血、击毁消失、3s 自毁 | player_tank_node(开炮)、combat_system_node、bullet.sdf | 场景里炮弹飞、打敌人(手动放一个靶)掉血,打完消失;单测 B1-B5 绿 | 待执行 |
 | 5 | 开始/暂停:Enter 前一切锁死,P 全冻结(子弹悬停) | game_master_node、各节点接 GameState | IDLE 按键无效;Enter 后能动;P 后物理+逻辑全停,再 P 恢复;单测 A1-A7、D4 绿 | 待执行 |
@@ -176,6 +176,7 @@
 | 2026-09-05 | 前期 | Gazebo 11.10.2+全部桥接插件安装验证通过;坦克模型入库 third_party(480K,MIT);GitHub 远程仓库开通(jokerxiao1218-cell/tank),基线已推送 | 基线 commit eee3b95 |
 | 2026-09-05 | 设计 | 用户批准设计文档,授权 batch 间自主推进,用户做最终验收 | — |
 | 2026-09-05 | Batch 1 | ✅ 4 包编译绿、冒烟测试 3/3 绿、消息注册验证通过 | 坑:colcon 递归扫到 third_party 的 ROS1 老包导致首次编译失败,已放 third_party/COLCON_IGNORE 挡掉(以后新会话须知:该标记不能删) |
+| 2026-09-05 | Batch 2 | ✅ 坦克 spawn 成功、cmd_vel 驾驶位移 2.95m(指令 1.5m/s×2s)、炮塔转 1.57rad 实测 1.5699、两个控制器 activated | **7 个坑全记录(重要经验)**:①ROS2 Humble 无 zthanxx 用的多轮差速插件(ROS1 fork 特供),改用 libgazebo_ros_planar_move.so(吃 cmd_vel 的 x+yaw,游戏操控更稳);②gazebo_ros2_control 插件缺 <ros><namespace> 时在全局找 rsp 服务,死循环卡死 gzserver(CPU 0%/时钟停);③<robot_param_node> 必须写全限定名 /<prefix>/robot_state_publisher(相对名拼接不可靠);④<parameters> 必须是插件标签直接子级,放进 <ros> 内插件读不到;⑤cm 的 update_rate 必须由 yaml 提供,且 rcl 参数文件按节点全限定名匹配——带 ns 的 cm 匹配不上纯键 controller_manager:,须用 /** 通配(多坦克共用一份);⑥Humble 位置控制器类名是 position_controllers/JointGroupPositionController,命令话题 Float64MultiArray;控制器配置要写两份形态:嵌套段(turret_position_controller.type,cm 找插件用)+ 裸参数(joints,控制器节点自身读),/** 全灌即可;⑦环境管理:多轮验证留下孤儿 gzserver(占端口 11345 导致新 gzserver exit 255)与 rsp 僵尸(DDS 里多个 cm 抢答服务),症状忽好忽坏。标准清理:ps 收集 ros2 launch/gzserver/robot_state_publisher/spawner 全杀;验证收尾用 kill -INT 给 launch 让它自己带走子进程 |
 
 ## 7. 真机验证清单(= 实际运行清单,用户执行逐项勾)
 
