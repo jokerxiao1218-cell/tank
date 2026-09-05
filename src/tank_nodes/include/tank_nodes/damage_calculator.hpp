@@ -39,13 +39,16 @@ public:
     return std::min(kDamageCap, kBaseDamage + kDamagePerStack * s);
   }
 
-  // 阵营判断:炮弹名前缀 → 阵营。玩家弹 bullet_p_,敌人弹 bullet_e_<n>
-  // 同阵营不吃自己炮弹的伤(B5:玩家弹擦过玩家坦克不判定命中)
+  // 阵营判断:炮弹名前缀 → 阵营。
+  // 弹名格式 bullet_<发射者prefix>_<序号>(bullet_player_1、bullet_enemy_2_3):
+  // B6 修复——多个敌人执行器共用 bullet_e_ 前缀会撞名互斥,弹名必须带 prefix。
+  // 同阵营不吃自己炮弹的伤(B5:玩家弹擦过玩家坦克不判定命中;
+  // B6:enemy_1 的弹擦过 enemy_2 同样免疫)
   static bool same_camp(const std::string & bullet_name, const std::string & tank_name)
   {
-    const bool bullet_from_player = bullet_name.rfind("bullet_p_", 0) == 0;
+    const bool bullet_from_player = bullet_name.rfind("bullet_player", 0) == 0;
     const bool target_is_player = (tank_name == "player");
-    const bool bullet_from_enemy = bullet_name.rfind("bullet_e_", 0) == 0;
+    const bool bullet_from_enemy = bullet_name.rfind("bullet_enemy", 0) == 0;
     const bool target_is_enemy = tank_name.rfind("enemy_", 0) == 0;
     return (bullet_from_player && target_is_player) ||
            (bullet_from_enemy && target_is_enemy);

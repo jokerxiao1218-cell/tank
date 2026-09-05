@@ -30,7 +30,11 @@ add_executable(game_master_node src/game_master_node.cpp)
 ament_target_dependencies(game_master_node rclcpp tank_msgs std_srvs)
 target_include_directories(game_master_node PRIVATE include)
 
-install(TARGETS keyboard_node player_tank_node combat_system_node game_master_node
+add_executable(enemy_ai_node src/enemy_ai_node.cpp)
+ament_target_dependencies(enemy_ai_node rclcpp tank_msgs geometry_msgs std_msgs gazebo_msgs)
+target_include_directories(enemy_ai_node PRIVATE include)
+
+install(TARGETS keyboard_node player_tank_node combat_system_node game_master_node enemy_ai_node
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
@@ -52,6 +56,11 @@ if(BUILD_TESTING)
   target_compile_options(test_game_state PRIVATE -O0 -g)
   target_include_directories(test_game_state PRIVATE include)
   ament_target_dependencies(test_game_state tank_msgs)
+  # 敌人 AI 决策纯逻辑(D 组用例)
+  ament_add_gtest(test_enemy test/test_enemy_decision.cpp)
+  target_compile_options(test_enemy PRIVATE -O0 -g)
+  target_include_directories(test_enemy PRIVATE include)
+  ament_target_dependencies(test_enemy tank_msgs)
 endif()
 
 ament_package()

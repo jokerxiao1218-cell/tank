@@ -35,39 +35,39 @@ TEST(Damage, HitThresholdEdge)  // B4:线段距离 0.49 命中、0.51 不命中(
 {
   // 炮弹沿 x 轴飞过 y=0.49 处的坦克(线段水平,最近点即垂直距离)
   EXPECT_TRUE(DamageCalculator::hit(
-      "bullet_p_1", "enemy_1", 0.0, 0.0, 10.0, 0.0, 5.0, 0.49));
+      "bullet_player_1", "enemy_1", 0.0, 0.0, 10.0, 0.0, 5.0, 0.49));
   EXPECT_FALSE(DamageCalculator::hit(
-      "bullet_p_1", "enemy_1", 0.0, 0.0, 10.0, 0.0, 5.0, 0.51));
+      "bullet_player_1", "enemy_1", 0.0, 0.0, 10.0, 0.0, 5.0, 0.51));
   // 坦克在线段延长线外(炮弹已飞过):投影夹到端点
   EXPECT_TRUE(DamageCalculator::hit(
-      "bullet_p_1", "enemy_1", 0.0, 0.0, 10.0, 0.0, 10.3, 0.0));   // 距端点 0.3 命中
+      "bullet_player_1", "enemy_1", 0.0, 0.0, 10.0, 0.0, 10.3, 0.0));   // 距端点 0.3 命中
   EXPECT_FALSE(DamageCalculator::hit(
-      "bullet_p_1", "enemy_1", 0.0, 0.0, 10.0, 0.0, 10.6, 0.0));  // 距端点 0.6 不命中
+      "bullet_player_1", "enemy_1", 0.0, 0.0, 10.0, 0.0, 10.6, 0.0));  // 距端点 0.6 不命中
   // 斜向飞行的线段同样生效
   EXPECT_TRUE(DamageCalculator::hit(
-      "bullet_p_1", "enemy_1", 0.0, 0.0, 10.0, 10.0, 5.0, 5.2));
+      "bullet_player_1", "enemy_1", 0.0, 0.0, 10.0, 10.0, 5.0, 5.2));
 }
 
 TEST(Damage, FriendlyFireExcluded)  // B5:同阵营不判定命中
 {
   // 玩家的弹贴脸飞过玩家自己 → 不命中
   EXPECT_FALSE(DamageCalculator::hit(
-      "bullet_p_1", "player", 0.0, 0.0, 10.0, 0.0, 5.0, 0.1));
+      "bullet_player_1", "player", 0.0, 0.0, 10.0, 0.0, 5.0, 0.1));
   // 敌人的弹打敌人 → 不命中
   EXPECT_FALSE(DamageCalculator::hit(
-      "bullet_e_1", "enemy_2", 0.0, 0.0, 10.0, 0.0, 5.0, 0.1));
+      "bullet_enemy_1_1", "enemy_2", 0.0, 0.0, 10.0, 0.0, 5.0, 0.1));
   // 玩家的弹打敌人 → 命中
   EXPECT_TRUE(DamageCalculator::hit(
-      "bullet_p_1", "enemy_1", 0.0, 0.0, 10.0, 0.0, 5.0, 0.1));
+      "bullet_player_1", "enemy_1", 0.0, 0.0, 10.0, 0.0, 5.0, 0.1));
   // 敌人的弹打玩家 → 命中
   EXPECT_TRUE(DamageCalculator::hit(
-      "bullet_e_1", "player", 0.0, 0.0, 10.0, 0.0, 5.0, 0.1));
+      "bullet_enemy_1_1", "player", 0.0, 0.0, 10.0, 0.0, 5.0, 0.1));
 }
 
 TEST(Damage, DegenerateSegment)  // 边界:炮弹两拍位置重合(起点悬停)退化为点距
 {
   EXPECT_TRUE(DamageCalculator::hit(
-      "bullet_p_1", "enemy_1", 3.0, 3.0, 3.0, 3.0, 3.3, 3.0));
+      "bullet_player_1", "enemy_1", 3.0, 3.0, 3.0, 3.0, 3.3, 3.0));
   EXPECT_FALSE(DamageCalculator::hit(
-      "bullet_p_1", "enemy_1", 3.0, 3.0, 3.0, 3.0, 3.6, 3.0));
+      "bullet_player_1", "enemy_1", 3.0, 3.0, 3.0, 3.0, 3.6, 3.0));
 }

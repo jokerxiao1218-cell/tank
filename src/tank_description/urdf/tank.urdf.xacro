@@ -182,10 +182,18 @@
   <!-- ====== Gazebo 插件 ====== -->
   <!-- 底盘:平面运动(直接吃 cmd_vel 的 x+yaw,坦克开起来,永不翻车) -->
   <gazebo>
-    <plugin name="tank_planar_move" filename="libgazebo_ros_planar_move.so">
+    <plugin name="tank_planar_move_${prefix}" filename="libgazebo_ros_planar_move.so">
       <update_rate>100</update_rate>
       <ros>
-        <namespace>/${prefix}</namespace>
+        <!-- B6 修复:同进程多插件连续初始化时 <namespace> 会串扰(滞后
+             一拍,实测 player 双份/enemy_3 零份;gzserver 静态加载和
+             factory spawn 都复现,是 gazebo_ros 的系统级 bug)。改用
+             remapping 定位话题:cmd_vel/odom 直接映射到带前缀的绝对名,
+             绕开 namespace 处理路径(ros2_control 插件不受影响)。
+             plugin name 也参数化:去掉 ns 后节点名裸奔,同名节点连续
+             初始化会卡死 world 加载 -->
+        <remapping>cmd_vel:=/${prefix}/cmd_vel</remapping>
+        <remapping>odom:=/${prefix}/odom</remapping>
       </ros>
       <command_topic>cmd_vel</command_topic>
       <odometry_topic>odom</odometry_topic>

@@ -131,8 +131,9 @@ private:
     const double muzzle_y = tank_pose_.position.y + 1.2 * std::sin(dir);
 
     auto req = std::make_shared<gazebo_msgs::srv::SpawnEntity::Request>();
-    req->name = prefix_ == "player" ? "bullet_p_" + std::to_string(++bullet_seq_)
-                                    : "bullet_e_" + std::to_string(++bullet_seq_);
+    // 弹名带发射者 prefix:多个敌人执行器各自计数,共用 bullet_e_ 前缀
+    // 会撞名(B6 实测 "Entity already exists" 生成失败互斥)
+    req->name = "bullet_" + prefix_ + "_" + std::to_string(++bullet_seq_);
     req->xml = bullet_sdf_;
     req->initial_pose.position.x = muzzle_x;
     req->initial_pose.position.y = muzzle_y;
