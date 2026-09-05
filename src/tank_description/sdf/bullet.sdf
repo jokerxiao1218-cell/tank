@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <!-- tank-battle 炮弹:小球,靠玩家/敌人节点 spawn_entity 生成,名字带阵营前缀(bullet_p_N / bullet_e_N) -->
+  <model name="bullet">
+    <link name="body">
+      <inertial>
+        <mass>0.5</mass>
+        <inertia>
+          <ixx>0.00128</ixx><iyy>0.00128</iyy><izz>0.00128</izz>
+          <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+        </inertia>
+      </inertial>
+      <collision name="col">
+        <geometry><sphere><radius>0.08</radius></sphere></geometry>
+        <mu1>0.1</mu1><mu2>0.1</mu2>
+      </collision>
+      <visual name="vis">
+        <geometry><sphere><radius>0.08</radius></sphere></geometry>
+        <material>
+          <ambient>1.0 0.55 0.0 1</ambient>
+          <diffuse>1.0 0.65 0.0 1</diffuse>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

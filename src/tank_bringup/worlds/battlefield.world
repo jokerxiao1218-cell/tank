@@ -5,6 +5,10 @@
     <include><uri>model://ground_plane</uri></include>
     <include><uri>model://sun</uri></include>
 
+    <!-- 实体状态插件:提供 /model_states 话题与 get/set_entity_state 服务
+         (combat 命中判定/炮弹初速/道具拾取都靠它) -->
+    <plugin name="gazebo_ros_state" filename="libgazebo_ros_state.so"/>
+
     <scene>
       <shadows>false</shadows>
     </scene>
