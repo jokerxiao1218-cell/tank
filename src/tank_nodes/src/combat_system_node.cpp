@@ -26,8 +26,10 @@
 #include "geometry_msgs/msg/pose.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "tank_msgs/msg/game_state.hpp"
+#include "tank_msgs/msg/powerup_event.hpp"
 #include "tank_msgs/msg/tank_status.hpp"
 #include "tank_nodes/damage_calculator.hpp"
+#include "tank_nodes/powerup_effects.hpp"
 
 class CombatSystemNode : public rclcpp::Node
 {
@@ -58,6 +60,26 @@ public:
     status_pub_ = create_publisher<tank_msgs::msg::TankStatus>(
       "/tank_status", 10);
     delete_cli_ = create_client<gazebo_msgs::srv::DeleteEntity>("/delete_entity");
+
+    // 道具(batch 7):damage_up 记玩家火力叠层;repair 直接回满玩家血
+    powerup_sub_ = create_subscription<tank_msgs::msg::PowerupEvent>(
+      "/powerup_collected", 10,
+      [this](const tank_msgs::msg::PowerupEvent::SharedPtr msg) {
+        if (msg->collector != "player") {return;}
+        if (msg->powerup_type == "damage_up") {
+          player_stacks_ = std::min(
+            player_stacks_ + 1, tank_nodes::PowerupEffects::kMaxDamageStacksCap);
+          RCLCPP_INFO(get_logger(), "火力强化!当前伤害 %.0f",
+            tank_nodes::DamageCalculator::damage_with_stacks(player_stacks_));
+        } else if (msg->powerup_type == "repair") {
+          auto it = tanks_.find("player");
+          if (it != tanks_.end() && it->second.alive) {
+            it->second.health = tank_nodes::PowerupEffects::apply_repair(
+              it->second.health, default_health_);
+            RCLCPP_INFO(get_logger(), "维修!血量回满 %.0f", it->second.health);
+          }
+        }
+      });
 
     RCLCPP_INFO(get_logger(),
       "战斗系统就绪(命中半径 %.2fm,炮弹寿命 %.1fs)", hit_radius_, bullet_lifetime_);
@@ -154,9 +176,13 @@ private:
             bname, tname, b.judge_x, b.judge_y, b.cur_x, b.cur_y,
             t.x, t.y, hit_radius_))
         {
-          t.health = tank_nodes::DamageCalculator::apply(t.health, 25.0);
-          RCLCPP_INFO(get_logger(), "命中!%s → %s,剩余血量 %.0f",
-            bname.c_str(), tname.c_str(), t.health);
+          // 玩家弹吃火力叠层(batch 7 道具);敌弹固定基础伤害
+          const double dmg = bname.rfind("bullet_player", 0) == 0
+            ? tank_nodes::DamageCalculator::damage_with_stacks(player_stacks_)
+            : tank_nodes::DamageCalculator::kBaseDamage;
+          t.health = tank_nodes::DamageCalculator::apply(t.health, dmg);
+          RCLCPP_INFO(get_logger(), "命中!%s → %s,伤害 %.0f,剩余血量 %.0f",
+            bname.c_str(), tname.c_str(), dmg, t.health);
           if (t.health <= 0.0) {
             t.alive = false;
             request_delete(tname);
@@ -213,12 +239,14 @@ private:
   double bullet_lifetime_ = 3.0;
   double judge_period_ = 0.05;
   double last_judge_sim_ = 0.0;
+  int player_stacks_ = 0;  // 玩家火力叠层(batch 7)
 
   std::map<std::string, TankEntry> tanks_;
   std::map<std::string, BulletEntry> bullets_;
 
   rclcpp::Subscription<gazebo_msgs::msg::ModelStates>::SharedPtr model_states_sub_;
   rclcpp::Subscription<tank_msgs::msg::GameState>::SharedPtr game_state_sub_;
+  rclcpp::Subscription<tank_msgs::msg::PowerupEvent>::SharedPtr powerup_sub_;
   rclcpp::Publisher<tank_msgs::msg::TankStatus>::SharedPtr status_pub_;
   rclcpp::Client<gazebo_msgs::srv::DeleteEntity>::SharedPtr delete_cli_;
 };

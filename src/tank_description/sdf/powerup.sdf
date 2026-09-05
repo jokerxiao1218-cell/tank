@@ -1,0 +1,19 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <!-- 强化道具:1m 内自动拾取;powerup_manager_node 负责刷新/删除 -->
+  <model name="powerup_template">
+    <static>true</static>
+    <pose>0 0 0.35 0 0 0</pose>
+    <link name="link">
+      <visual name="visual">
+        <geometry>
+          <sphere><radius>0.25</radius></sphere>
+        </geometry>
+        <material>
+          <ambient>0.2 0.2 1.0 1</ambient>
+          <diffuse>0.2 0.2 1.0 1</diffuse>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

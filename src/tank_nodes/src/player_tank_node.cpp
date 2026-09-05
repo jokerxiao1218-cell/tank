@@ -27,7 +27,9 @@
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "tank_msgs/msg/game_state.hpp"
+#include "tank_msgs/msg/powerup_event.hpp"
 #include "tank_nodes/damage_calculator.hpp"
+#include "tank_nodes/powerup_effects.hpp"
 
 class PlayerTankNode : public rclcpp::Node
 {
@@ -76,6 +78,16 @@ public:
       });
     commands_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>(
       "/" + prefix + "/turret_position_controller/commands", 10);
+
+    // 道具(batch 7):rapid_fire 生效——开炮冷却 ×0.5(执行器前缀匹配,
+    // 玩家/敌人执行器通用,敌人不会收到 collector=player 的事件)
+    powerup_sub_ = create_subscription<tank_msgs::msg::PowerupEvent>(
+      "/powerup_collected", 10,
+      [this](const tank_msgs::msg::PowerupEvent::SharedPtr msg) {
+        if (msg->collector != prefix_ || msg->powerup_type != "rapid_fire") {return;}
+        fire_cooldown_ = tank_nodes::PowerupEffects::apply_rapid_fire(fire_cooldown_);
+        RCLCPP_INFO(get_logger(), "射速强化!当前冷却 %.2fs", fire_cooldown_);
+      });
 
     // ---- Gazebo 服务客户端 ----
     spawn_cli_ = create_client<gazebo_msgs::srv::SpawnEntity>("/spawn_entity");
@@ -191,6 +203,7 @@ private:
   rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr fire_sub_;
   rclcpp::Subscription<gazebo_msgs::msg::ModelStates>::SharedPtr model_states_sub_;
   rclcpp::Subscription<tank_msgs::msg::GameState>::SharedPtr game_state_sub_;
+  rclcpp::Subscription<tank_msgs::msg::PowerupEvent>::SharedPtr powerup_sub_;
   rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr commands_pub_;
   rclcpp::Client<gazebo_msgs::srv::SpawnEntity>::SharedPtr spawn_cli_;
   rclcpp::Client<gazebo_msgs::srv::SetEntityState>::SharedPtr set_state_cli_;

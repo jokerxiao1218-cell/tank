@@ -26,7 +26,9 @@
 #include "std_msgs/msg/float64.hpp"
 #include "std_srvs/srv/trigger.hpp"
 #include "tank_msgs/msg/game_state.hpp"
+#include "tank_msgs/msg/powerup_event.hpp"
 #include "tank_nodes/keymap_parser.hpp"
+#include "tank_nodes/powerup_effects.hpp"
 
 namespace
 {
@@ -55,6 +57,7 @@ public:
   {
     // prefix 参数:玩家/敌人共用节点代码,batch 6 敌人不用键盘,但保持参数化一致性
     const std::string prefix = declare_parameter<std::string>("prefix", "player");
+    prefix_ = prefix;
     // speed_scale:速度道具(batch 7)通过参数/话题注入,当前默认 1.0
     speed_scale_ = declare_parameter<double>("speed_scale", 1.0);
 
@@ -74,6 +77,15 @@ public:
       };
     game_state_sub_ = create_subscription<tank_msgs::msg::GameState>(
       "/game_state", 10, game_state_cb);
+
+    // 道具(batch 7):speed_up 生效——底盘速度倍率 +0.3 封顶 1.9
+    powerup_sub_ = create_subscription<tank_msgs::msg::PowerupEvent>(
+      "/powerup_collected", 10,
+      [this](const tank_msgs::msg::PowerupEvent::SharedPtr msg) {
+        if (msg->collector != prefix_ || msg->powerup_type != "speed_up") {return;}
+        speed_scale_ = tank_nodes::PowerupEffects::apply_speed_up(speed_scale_);
+        RCLCPP_INFO(get_logger(), "速度强化!当前倍率 %.1f", speed_scale_);
+      });
 
     // 开始/暂停服务客户端(game_master 提供)
     start_cli_ = create_client<std_srvs::srv::Trigger>("/game/start");
@@ -183,7 +195,9 @@ private:
   rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr start_cli_;
   rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr pause_cli_;
   rclcpp::Subscription<tank_msgs::msg::GameState>::SharedPtr game_state_sub_;
+  rclcpp::Subscription<tank_msgs::msg::PowerupEvent>::SharedPtr powerup_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
+  std::string prefix_;
 };
 
 int main(int argc, char ** argv)

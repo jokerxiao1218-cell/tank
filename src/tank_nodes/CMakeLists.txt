@@ -34,7 +34,11 @@ add_executable(enemy_ai_node src/enemy_ai_node.cpp)
 ament_target_dependencies(enemy_ai_node rclcpp tank_msgs geometry_msgs std_msgs gazebo_msgs)
 target_include_directories(enemy_ai_node PRIVATE include)
 
-install(TARGETS keyboard_node player_tank_node combat_system_node game_master_node enemy_ai_node
+add_executable(powerup_manager_node src/powerup_manager_node.cpp)
+ament_target_dependencies(powerup_manager_node rclcpp tank_msgs gazebo_msgs ament_index_cpp)
+target_include_directories(powerup_manager_node PRIVATE include)
+
+install(TARGETS keyboard_node player_tank_node combat_system_node game_master_node enemy_ai_node powerup_manager_node
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
@@ -61,6 +65,10 @@ if(BUILD_TESTING)
   target_compile_options(test_enemy PRIVATE -O0 -g)
   target_include_directories(test_enemy PRIVATE include)
   ament_target_dependencies(test_enemy tank_msgs)
+  # 道具效果纯逻辑(C 组用例,纯 header 无 msg 依赖)
+  ament_add_gtest(test_powerup test/test_powerup.cpp)
+  target_compile_options(test_powerup PRIVATE -O0 -g)
+  target_include_directories(test_powerup PRIVATE include)
 endif()
 
 ament_package()
