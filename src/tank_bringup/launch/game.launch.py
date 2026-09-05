@@ -37,7 +37,7 @@ TANKS = [
 ]
 
 
-def build_full_world(xacro_file, world_template, out_path):
+def build_full_world(xacro_file, world_template, out_path, mesh_dir):
     """生成期组装完整 world:模板(墙/掩体/插件)+ 4 辆坦克静态模型。
 
     每辆坦克:xacro 出 URDF → gz sdf 离线转 SDF → 取 <model> 块、
@@ -53,6 +53,13 @@ def build_full_world(xacro_file, world_template, out_path):
         sdf_txt = subprocess.run(
             ['gz', 'sdf', '-p', urdf_file],
             check=True, capture_output=True, text=True).stdout
+        # B8 GUI 修复:gazebo_ros 把 URDF 的 package:// 转成 model://,
+        # 而 gzclient(GUI)解析 model:// 需要 GAZEBO_MODEL_PATH 精确配置——
+        # 我们环境没配,GUI 一启动就死循环找 mesh 拖到"无响应"(无头模式
+        # 不加载视觉网格,故 8 批验证全绿没暴露)。改成 file:// 绝对路径,
+        # 指向 install 里真实文件,任何启动方式都稳。
+        sdf_txt = sdf_txt.replace(
+            'model://tank_description/meshes/', 'file://' + mesh_dir + '/')
         m = sdf_txt[sdf_txt.find('<model'):sdf_txt.rfind('</model>') + len('</model>')]
         # model 名改为 prefix:URDF 的 robot name 是固定的(如 'tank'),
         # 4 辆同名 model 嵌入同一 world 会报 Non-unique names
@@ -67,24 +74,26 @@ def build_full_world(xacro_file, world_template, out_path):
         f.write(world_txt.replace('</world>', ''.join(blocks) + '\n</world>'))
 
 
-def tank_ros_nodes(urdf_file, prefix):
+def tank_ros_nodes(urdf_file, prefix, index):
     """一辆坦克的 ROS 侧节点:rsp + 两个控制器 spawner。
 
     坦克实体已静态嵌入 world(见模块 docstring),这里不再有 spawn 节点。
-    spawner 延迟 6s:等 gzserver(3s 启动)加载静态坦克、起 controller_
-    manager;spawner 自带服务等待循环,晚一点只会少打几条等待日志。
+    spawner 按 index 错峰(6s + 1.5s×序号):4 个 controller_manager 同时
+    冷启动会撞 class loader 竞态(B8 实测 player 的炮塔控制器偶发
+    "no factory exists" 加载失败),错峰加载稳定。
     """
+    period = 6.0 + 1.5 * index
     with open(urdf_file) as f:
         robot_description = f.read()
     return [
         Node(package='robot_state_publisher', executable='robot_state_publisher',
              namespace=prefix,
              parameters=[{'robot_description': robot_description}]),
-        TimerAction(period=6.0, actions=[Node(
+        TimerAction(period=period, actions=[Node(
             package='controller_manager', executable='spawner',
             arguments=['joint_state_broadcaster',
                        '--controller-manager', f'/{prefix}/controller_manager'])]),
-        TimerAction(period=6.0, actions=[Node(
+        TimerAction(period=period + 0.5, actions=[Node(
             package='controller_manager', executable='spawner',
             arguments=['turret_position_controller',
                        '--controller-manager', f'/{prefix}/controller_manager'])]),
@@ -99,11 +108,12 @@ def generate_launch_description():
     xacro_file = os.path.join(tank_desc_share, 'urdf', 'tank.urdf.xacro')
     world_template = os.path.join(bringup_share, 'worlds', 'battlefield.world')
     full_world = '/tmp/tank_battle_full.world'
-    build_full_world(xacro_file, world_template, full_world)
+    mesh_dir = os.path.join(tank_desc_share, 'meshes')
+    build_full_world(xacro_file, world_template, full_world, mesh_dir)
 
     entities = []
-    for prefix, color, x, y in TANKS:
-        entities += tank_ros_nodes(f'/tmp/tank_battle_{prefix}.urdf', prefix)
+    for i, (prefix, color, x, y) in enumerate(TANKS):
+        entities += tank_ros_nodes(f'/tmp/tank_battle_{prefix}.urdf', prefix, i)
 
     # 每辆敌人坦克两个节点:AI 决策(cmd_vel/turret_cmd/fire)+ 执行器(炮
     # 塔+开炮)。执行器复用 player_tank_node(prefix 参数化,弹名自动带 prefix)
