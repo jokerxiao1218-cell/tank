@@ -38,7 +38,11 @@ add_executable(powerup_manager_node src/powerup_manager_node.cpp)
 ament_target_dependencies(powerup_manager_node rclcpp tank_msgs gazebo_msgs ament_index_cpp)
 target_include_directories(powerup_manager_node PRIVATE include)
 
-install(TARGETS keyboard_node player_tank_node combat_system_node game_master_node enemy_ai_node powerup_manager_node
+add_executable(hud_node src/hud_node.cpp)
+ament_target_dependencies(hud_node rclcpp tank_msgs)
+target_include_directories(hud_node PRIVATE include)
+
+install(TARGETS keyboard_node player_tank_node combat_system_node game_master_node enemy_ai_node powerup_manager_node hud_node
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)

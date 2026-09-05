@@ -139,6 +139,7 @@ def generate_launch_description():
              output='screen'),
         Node(package='tank_nodes', executable='powerup_manager_node',
              output='screen'),
+        Node(package='tank_nodes', executable='hud_node', output='screen'),
         # 敌人:AI 决策 + 执行器(上面循环生成)
         *enemy_nodes,
     ])
