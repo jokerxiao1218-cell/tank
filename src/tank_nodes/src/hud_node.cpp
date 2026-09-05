@@ -88,7 +88,7 @@ private:
       case tank_msgs::msg::GameState::PAUSED: sc = kYellow; state_str = "已暂停"; break;
       case tank_msgs::msg::GameState::WIN: sc = kGreen; state_str = "胜利!敌人全灭"; break;
       case tank_msgs::msg::GameState::LOSE: sc = kRed; state_str = "失败,按重启"; break;
-      default: sc = kCyan; state_str = "待开始(按 Enter)"; break;
+      default: sc = kCyan; state_str = "准备中(自动开始)"; break;
     }
 
     int enemies = 0;

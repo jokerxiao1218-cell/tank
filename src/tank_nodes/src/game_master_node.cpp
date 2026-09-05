@@ -47,6 +47,22 @@ public:
         }
       });
 
+    // 自动开始(用户需求变更:不再按 Enter):节点启动 auto_start_delay 秒后
+    // 自动转 RUNNING;坦克实体加载完(约 10s)敌人自然开始行动。
+    // 传负值可禁用(退回手动 Enter)
+    auto_start_delay_ = declare_parameter<double>("auto_start_delay", 5.0);
+    if (auto_start_delay_ >= 0.0) {
+      auto_start_timer_ = create_wall_timer(
+        std::chrono::duration<double>(auto_start_delay_),
+        [this]() {
+          auto_start_timer_->cancel();  // 只触发一次
+          const auto r = sm_.handle_start();
+          if (r.ok) {
+            RCLCPP_INFO(get_logger(), "游戏自动开始(%.0f 秒到点)!", auto_start_delay_);
+          }
+        });
+    }
+
     status_sub_ = create_subscription<tank_msgs::msg::TankStatus>(
       "/tank_status", 10,
       [this](const tank_msgs::msg::TankStatus::SharedPtr msg) {
@@ -113,9 +129,11 @@ private:
   std::map<std::string, tank_msgs::msg::TankStatus> latest_;
   bool seen_any_enemy_ = false;
   uint8_t last_state_ = tank_msgs::msg::GameState::IDLE;
+  double auto_start_delay_ = 5.0;
 
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr start_srv_;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr pause_srv_;
+  rclcpp::TimerBase::SharedPtr auto_start_timer_;
   rclcpp::Subscription<tank_msgs::msg::TankStatus>::SharedPtr status_sub_;
   rclcpp::Publisher<tank_msgs::msg::GameState>::SharedPtr state_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
