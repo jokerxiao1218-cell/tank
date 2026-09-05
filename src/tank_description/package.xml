@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>tank_description</name>
+  <version>0.1.0</version>
+  <description>坦克模型描述:xacro URDF、炮弹/道具 SDF、meshes(底盘源自 zthanxx/tank_bot,MIT)</description>
+  <maintainer email="jokerxiao1218-cell@users.noreply.github.com">jokerxiao1218-cell</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>xacro</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

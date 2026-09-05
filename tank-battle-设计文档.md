@@ -1,6 +1,6 @@
 # tank-battle(ROS2 3D 坦克大战)设计文档
 
-> 创建时间:2026-09-05 | 状态:设计中(待用户审)
+> 创建时间:2026-09-05 | 状态:开发中(2026-09-05 用户批准设计文档与测试计划,授权全程自主推进,batch 间不再逐项确认,最终验收由用户执行)
 
 ## 1. 需求卡(已确认)
 
@@ -157,7 +157,7 @@
 
 | # | 目标(做完系统什么状态) | 涉及文件 | 验证方式 | 状态 |
 |---|---|---|---|---|
-| 1 | 骨架立起:4 个包空壳+自定义消息+编译通过;git 基线 | tank_msgs 全部、其余包骨架 | colcon build 绿;`ros2 interface show tank_msgs/GameState` 正常 | 待执行 |
+| 1 | 骨架立起:4 个包空壳+自定义消息+编译通过;git 基线 | tank_msgs 全部、其余包骨架 | colcon build 绿;`ros2 interface show tank_msgs/GameState` 正常 | ✅ |
 | 2 | 坦克开进 Gazebo:zthanxx 模型入库(MIT 注明)+自加炮塔、battlefield.world、launch 一条命令启动,场景里看到坦克 | tank_description、tank_bringup | 启动 Gazebo 看到坦克炮塔;命令行手动发 cmd_vel 坦克会动、发炮塔命令炮塔会转 | 待执行 |
 | 3 | 键盘操控:WASD 开车、QE 转炮塔 | keyboard_node、player_tank_node | 按键开车/转炮塔,松开即停;单测 E1-E5 绿 | 待执行 |
 | 4 | 开炮打伤害:空格发炮弹、飞行、命中扣血、击毁消失、3s 自毁 | player_tank_node(开炮)、combat_system_node、bullet.sdf | 场景里炮弹飞、打敌人(手动放一个靶)掉血,打完消失;单测 B1-B5 绿 | 待执行 |
@@ -173,6 +173,9 @@
 | 日期 | Batch | 结果 | 备注(Commit/问题) |
 |---|---|---|---|
 | 2026-09-05 | 前期 | 环境调查、URDF 调研(3 候选实测)、需求卡+技术路线用户确认 | URDF 调研报告全文见会话记录 |
+| 2026-09-05 | 前期 | Gazebo 11.10.2+全部桥接插件安装验证通过;坦克模型入库 third_party(480K,MIT);GitHub 远程仓库开通(jokerxiao1218-cell/tank),基线已推送 | 基线 commit eee3b95 |
+| 2026-09-05 | 设计 | 用户批准设计文档,授权 batch 间自主推进,用户做最终验收 | — |
+| 2026-09-05 | Batch 1 | ✅ 4 包编译绿、冒烟测试 3/3 绿、消息注册验证通过 | 坑:colcon 递归扫到 third_party 的 ROS1 老包导致首次编译失败,已放 third_party/COLCON_IGNORE 挡掉(以后新会话须知:该标记不能删) |
 
 ## 7. 真机验证清单(= 实际运行清单,用户执行逐项勾)
 
