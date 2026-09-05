@@ -24,6 +24,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/empty.hpp"
 #include "std_msgs/msg/float64.hpp"
+#include "std_srvs/srv/trigger.hpp"
 #include "tank_msgs/msg/game_state.hpp"
 #include "tank_nodes/keymap_parser.hpp"
 
@@ -73,6 +74,10 @@ public:
       };
     game_state_sub_ = create_subscription<tank_msgs::msg::GameState>(
       "/game_state", 10, game_state_cb);
+
+    // 开始/暂停服务客户端(game_master 提供)
+    start_cli_ = create_client<std_srvs::srv::Trigger>("/game/start");
+    pause_cli_ = create_client<std_srvs::srv::Trigger>("/game/pause");
 
     timer_ = create_wall_timer(
       std::chrono::milliseconds(100), [this]() {on_timer();});  // 10Hz
@@ -145,12 +150,23 @@ private:
     if (fire_req) {
       fire_pub_->publish(std_msgs::msg::Empty());
     }
-    if (start_req) {
-      // batch 5 接入:/game/start 服务调用
-      RCLCPP_INFO(get_logger(), "开始请求(Enter)——game_master 服务将在 batch 5 接入");
+    if (start_req && start_cli_->service_is_ready()) {
+      start_cli_->async_send_request(
+        std::make_shared<std_srvs::srv::Trigger::Request>(),
+        [this](rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture fut) {
+          if (!fut.get()->success) {
+            RCLCPP_INFO(get_logger(), "开始被拒:%s", fut.get()->message.c_str());
+          }
+        });
     }
-    if (pause_req) {
-      RCLCPP_INFO(get_logger(), "暂停/恢复请求(P)——game_master 服务将在 batch 5 接入");
+    if (pause_req && pause_cli_->service_is_ready()) {
+      pause_cli_->async_send_request(
+        std::make_shared<std_srvs::srv::Trigger::Request>(),
+        [this](rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture fut) {
+          if (fut.get()->success) {
+            RCLCPP_INFO(get_logger(), "已请求暂停/恢复");
+          }
+        });
     }
   }
 
@@ -164,6 +180,8 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
   rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr turret_pub_;
   rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr fire_pub_;
+  rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr start_cli_;
+  rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr pause_cli_;
   rclcpp::Subscription<tank_msgs::msg::GameState>::SharedPtr game_state_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
 };

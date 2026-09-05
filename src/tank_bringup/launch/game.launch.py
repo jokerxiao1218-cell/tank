@@ -71,7 +71,8 @@ def generate_launch_description():
             launch_arguments={'world': world_file,
                               'gui': LaunchConfiguration('gui')}.items()),
         *entities,
-        # 2. 游戏节点:键盘、玩家执行器(开炮)、战斗系统(命中判定)
+        # 2. 游戏节点:总控(开始/暂停)、键盘、玩家执行器(开炮)、战斗系统(命中判定)
+        Node(package='tank_nodes', executable='game_master_node', output='screen'),
         Node(package='tank_nodes', executable='keyboard_node',
              parameters=[{'prefix': 'player'}], output='screen'),
         Node(package='tank_nodes', executable='player_tank_node',
